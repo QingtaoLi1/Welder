@@ -222,16 +222,17 @@ class Tunner(object):
         eliminate_memcpy(output_nodes)
         signature = subgraph_hash(output_nodes)
         if self.count_cache(signature):
-            logger.info("Found in cache")
             cached = self.get_cache(signature)
             if cached is None:
                 return None
-            result = CompileResult(cached.config, cached.code.replace(cached.name, kernel_name),
-                cached.block_size, cached.grid_size, kernel_name, cached.args)
-            result.latency = cached.latency
-            result.set_io_desc(input_desc, output_desc)
-            result.origin = cached
-            return result
+            if kernel_name == cached.name:
+                logger.info("Found in cache")
+                result = CompileResult(cached.config, cached.code.replace(cached.name, kernel_name),
+                    cached.block_size, cached.grid_size, kernel_name, cached.args)
+                result.latency = cached.latency
+                result.set_io_desc(input_desc, output_desc)
+                result.origin = cached
+                return result
 
         policy_list = self.get_policy_list()
         configs = self.generate_configs(policy_list, output_nodes)
