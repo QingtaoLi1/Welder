@@ -123,7 +123,7 @@ extern "C" int {symbol}({def_args}) {{
             src = tempfile.NamedTemporaryFile(mode='w', suffix=".cpp")
             lib_name = src.name.replace(".cpp", ".so")
             compute_version = arch.compute_capability
-            command = ["hipcc", "-fPIC", "--shared", "-O2", "-ffast-math", "--amdgpu-target={}".format(compute_version),
+            command = ["hipcc", "-fPIC", "--shared", "-O2", "-ffast-math", "--offload-arch={}".format(compute_version),
             src.name, "-o", lib_name]
         else:
             raise NotImplementedError(arch.platform)
