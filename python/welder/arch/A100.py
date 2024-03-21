@@ -9,7 +9,7 @@ class A100:
         self.sm_partition = 4
         self.transaction_size = [32, 128]   # in bytes
         self.max_smem_usage = 164*1024
-        self.bandwidth = [1319, 16308]
+        self.bandwidth = [1555, 18153]      # based on ampere-architecture-white-paper
         self.platform = "CUDA"
         self.compute_capability = "80"
         self.target = tvm.target.cuda(model="A100", arch="sm_80")
