@@ -1,5 +1,6 @@
 from typing import List
 import logging
+import re
 
 from ..graph import Node, find_topo_sort_priority
 from ..utils import CompileResult
@@ -133,7 +134,32 @@ class Engine:
                     logger.error("Cannot generate code for " + top_node.name)
             else:
                 logger.info("Skipping node " + top_node.name)
+        cp_result = self._change_to_fp32_accumulator(cp_result)
         return FusionGroup(cur_group, cur_group_id, cp_result, cur_latency_gain)
+
+    def _change_to_fp32_accumulator(self, cp_result):
+        code_lines = cp_result.code.split("\n")
+        store_pattern = r'= \*\(uint1\*\)\((.*_cutlass_warp_mma)'
+        for_pattern = r'for \(int (.*) = 0; (.*) < ([0-9]+); \+\+(.*)\) \{'
+        modified_lines = []
+        for i, line in enumerate(code_lines):
+            match_store = re.search(store_pattern, line)
+            if match_store:
+                output_var = match_store.group(1)
+                match_for = re.search(for_pattern, code_lines[i-1])
+                assert match_for
+                loop_var = match_for.group(1)
+                loop_num = int(match_for.group(3))
+                modified_lines.insert(-2, f"  half temp[{loop_num * 2}];")
+                modified_lines.append(f"    temp[(int)({loop_var} * 2)] = (half){output_var}[(int)({loop_var} * 2)];")
+                modified_lines.append(f"    temp[(int)({loop_var} * 2 + 1)] = (half){output_var}[(int)({loop_var} * 2 + 1)];")
+                modified_lines.append(line.replace(output_var, 'temp'))
+            else:
+                modified_lines.append(line)
+        modified_code = "\n".join(modified_lines)
+        cp_result.code = modified_code
+        return cp_result
+
 
     def compute_gain(self, group: List[Node], cp_result: CompileResult) -> float:
         for node in group:
